@@ -1,5 +1,4 @@
 Pacman pacman;
-//test
 Ghost Pinky;
 Ghost Blinky;
 Ghost Inky;
@@ -18,6 +17,7 @@ Inky = new Ghost (2);
 Clyde = new Ghost (3);
 design = loadTable("design.txt","csv");
 scoretable = loadTable("score.csv","header");
+scoretable.setColumnType("score", Table.INT);
 int w= design.getRowCount()*40;
 int h= design.getColumnCount()*40;
 }
@@ -70,8 +70,9 @@ noStroke();
  
 }
 //réinitialisation du jeu
-if(Ngum == 0){
+if(Ngum == 0 || pacman.eaten){
  start =false; 
+
  design = loadTable("design.txt","csv");
 
 // Sauvegarder le score et la date dans un csv 
@@ -88,6 +89,10 @@ if(Ngum == 0){
  
 // Recommencer avec un nouveau pacman
  pacman = new Pacman();
+ Pinky = new Ghost(0);
+ Blinky = new Ghost(1);
+ Inky = new Ghost(2);
+ Clyde = new Ghost(3);
  
  
 
@@ -100,11 +105,25 @@ text("SCORE: "+ pacman.score, 60, 30); //position ou le texte est mis
 //on move que quand cela start
   if (start){
 
-  pacman.speed = 40;
   pacman.move();
+  Blinky.move();
+  Pinky.move();
+  Inky.move();
+  Clyde.move();
   pacman.eatgum(design);
+  if(pacman.chrono > 0){
+   pacman.chrono--; 
+  }
+  else if (pacman.chrono == 0){
+   pacman.numberghosteaten = 1;
+  }
+  pacman.checkghost(Blinky);
+    pacman.checkghost(Pinky);
+    pacman.checkghost(Inky);
+    pacman.checkghost(Clyde);
   check_wraps(design, pacman);
 
+// le % sert à prendre le modulo
   if(frameCount%3 == 0){
     pacman.animation = 0;
   }
@@ -119,6 +138,7 @@ text("SCORE: "+ pacman.score, 60, 30); //position ou le texte est mis
   Pinky.display();
   Inky.display();
   Clyde.display();
+
   
   }
  else{
@@ -147,23 +167,27 @@ text("SCORE: "+ pacman.score, 60, 30); //position ou le texte est mis
 class Pacman{
   int xpos;
   int ypos;
-  int speed;
   int direction;
   int animation;
   PImage pacman;
   int ipos;
   int jpos;
   int score;
+  int chrono;
+  int numberghosteaten;
+  boolean eaten;
    
   
 Pacman(){
-  speed = 0;
   direction = 0;
   animation = 2;
   ipos = 12;
   jpos = 11;
   pacman = loadImage("pacman.png");
   score = 0;
+  chrono = 0;
+  numberghosteaten = 1;
+  eaten = false;
 }
  void display(){
    xpos = jpos*40;
@@ -178,37 +202,31 @@ Pacman(){
    }
  }
 void move(){
-   xpos = jpos*40;
-   ypos = ipos*40;
   if(direction == 0){ 
-    if(check_wall(design, this, direction)){
+    if(check_wall(design, ipos, jpos, direction)){
     }
     else{
-    xpos = xpos - speed;
     jpos = jpos-1;
     }
   }
   else if(direction == 1){
-    if(check_wall(design, this, direction)){
+    if(check_wall(design, ipos, jpos, direction)){
     }
     else{
-    xpos = xpos+speed;
     jpos = jpos+1;
     }
   }
   else if(direction == 2){
-      if(check_wall(design, this, direction)){
+      if(check_wall(design, ipos, jpos, direction)){
     }
     else{
-    ypos = ypos-speed;
     ipos = ipos-1;
     }
 }
 else if(direction == 3){
-    if(check_wall(design, this, direction)){
+    if(check_wall(design, ipos, jpos, direction)){
     }
     else{
-  ypos = ypos+speed;
   ipos = ipos+1;
     }
 }
@@ -223,19 +241,39 @@ void eatgum(Table design){
   else if(eatgumcell.equals("+")){
      design.setString(ipos, jpos, "-");
       score = score+50;
+   Pinky.weakghost = true;
+   Blinky.weakghost = true;
+   Inky.weakghost = true;
+   Clyde.weakghost = true;
+   chrono = 42;
   }
   
+}
+void checkghost(Ghost ghost){
+ if (ipos == ghost.ipos && jpos == ghost.jpos){
+  if (ghost.weakghost == false){
+  eaten = true;
+  }
+  else{
+    score = score+200*numberghosteaten;
+    numberghosteaten++;
+    ghost.ipos = 10;
+    ghost.jpos = 10+ghost.couleur;
+    ghost.weakghost = false;
+  }
+ }
 }
 }
 
 void keyPressed (){
+  // 0 : gauche, 1 : droite, 2 : haut, 3 : bas
   int tmp_dir;
   if (keyCode == 32){
    start = true;
   }
   if (keyCode == RIGHT){
    tmp_dir = 1;
-    if(check_wall(design, pacman, tmp_dir)){
+    if(check_wall(design, pacman.ipos, pacman.jpos, tmp_dir)){
     }
     else{
    pacman.direction = tmp_dir;
@@ -243,7 +281,7 @@ void keyPressed (){
   }
   else if(keyCode == LEFT){
     tmp_dir = 0;
-    if(check_wall(design, pacman, tmp_dir)){
+    if(check_wall(design, pacman.ipos, pacman.jpos, tmp_dir)){
     }
     else{
    pacman.direction = tmp_dir;
@@ -251,7 +289,7 @@ void keyPressed (){
   }
   else if(keyCode == UP){
     tmp_dir = 2;
-    if(check_wall(design, pacman, tmp_dir)){
+    if(check_wall(design, pacman.ipos, pacman.jpos, tmp_dir)){
     }
     else{
    pacman.direction = tmp_dir;
@@ -259,7 +297,7 @@ void keyPressed (){
   }
   else if(keyCode == DOWN){
     tmp_dir = 3;
-    if(check_wall(design, pacman, tmp_dir)){
+    if(check_wall(design, pacman.ipos, pacman.jpos, tmp_dir)){
     }
     else{
    pacman.direction = tmp_dir;
@@ -267,20 +305,21 @@ void keyPressed (){
   }
   
 }
-boolean check_wall(Table design, Pacman pacman, int direction){
- int nextjpos = pacman.jpos;
- int nextipos = pacman.ipos;
+boolean check_wall(Table design, int ipos, int jpos, int direction){
+  // 0 : gauche, 1 : droite, 2 : haut, 3 : bas
+ int nextjpos = jpos;
+ int nextipos = ipos;
   if (direction == 0){
-    nextjpos = pacman.jpos - 1;
+    nextjpos = jpos - 1;
   }
   else if(direction == 1){
-    nextjpos = pacman.jpos + 1;
+    nextjpos = jpos + 1;
   }
   else if(direction == 2){
-    nextipos = pacman.ipos - 1;
+    nextipos = ipos - 1;
   }
   else if(direction == 3){
-   nextipos = pacman.ipos + 1;
+   nextipos = ipos + 1;
   }
   
   String nextcell = design.getString(nextipos, nextjpos);
@@ -309,7 +348,6 @@ void check_wraps(Table design, Pacman pacman){
   
 
 class Ghost{
-  int speed;
   int direction;
   int ipos;
   int jpos;
@@ -317,25 +355,123 @@ class Ghost{
   int ypos;
   int couleur;
   PImage ghost;
+  PImage blueghost;
+  boolean weakghost;
   
   
   Ghost(int c){
-  speed = 0;
   direction = 0;
-  ipos = 10;
-  jpos = 10;
+  weakghost = false;
   ghost = loadImage("ghosts.png");
+  blueghost = loadImage("dead-ghosts.png");
   couleur = c;
+  ipos = 10;
+  jpos = 10 + couleur;
 }
  void display(){
-   xpos = jpos*40+couleur*40;
+   xpos = jpos*40;
    ypos = ipos*40;
+   if(pacman.chrono == 0){
+     weakghost = false;
+   }
+   if (weakghost == true){
+     image(blueghost.get(direction*40,0,40,40), xpos, ypos);
+   }
+   else{
+     
  
   image(ghost.get(direction*40, couleur*40,40,40), xpos, ypos);
-  
-
-   
- 
+   }
 }
+void move(){
+  // 0 : haut, 1 : droite, 2 : bas, 3 : gauche
+  if(direction == 0){ 
+    if(check_wall_ghost(design, ipos, jpos, direction)){
+    }
+    else{
+   if(weakghost){
+  if(frameCount%2 == 0){
+    ipos = ipos-1; 
+    }
+  }
+  else{ 
+        ipos = ipos-1; 
 
+  }
+    }
+  }
+  else if(direction == 1){
+    if(check_wall_ghost(design, ipos, jpos, direction)){
+    }
+    else{
+   if(weakghost){
+  if(frameCount%2 == 0){
+    jpos = jpos+1; 
+    }
+  }
+  else{ 
+        jpos = jpos+1; 
+
+  }
+    }
+  }
+  else if(direction == 2){
+      if(check_wall_ghost(design, ipos, jpos, direction)){
+    }
+    else{
+   if(weakghost){
+  if(frameCount%2 == 0){
+    ipos = ipos+1; 
+    }
+  }
+  else{ 
+        ipos = ipos+1; 
+
+  }
+    }
+}
+else if(direction == 3){
+    if(check_wall_ghost(design, ipos, jpos, direction)){
+    }
+    else{
+  //ypos = ypos+speed;
+  if(weakghost){
+  if(frameCount%2 == 0){
+    jpos = jpos-1; 
+    }
+  }
+  else{ 
+        jpos = jpos-1; 
+
+  }
+    
+}
+}
+}
+boolean check_wall_ghost(Table design, int ipos, int jpos, int direction){
+  // 0 : haut, 1 : droite, 2 : bas, 3 : gauche
+ int nextjpos = jpos;
+ int nextipos = ipos;
+  if (direction == 0){
+    nextipos = ipos - 1;
+  }
+  else if(direction == 1){
+    nextjpos = jpos + 1;
+  }
+  else if(direction == 2){
+    nextipos = ipos + 1;
+  }
+  else if(direction == 3){
+   nextjpos = jpos - 1;
+  }
+  
+  String nextcell = design.getString(nextipos, nextjpos);
+  //println(nextipos, nextjpos);
+  if(nextcell.equals("1")){
+  return true;
+  }
+  else{
+    return false;
+  }
+}
 }
